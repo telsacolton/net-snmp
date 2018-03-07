@@ -204,6 +204,26 @@ class Session(object):
         res = client_intf.delete_session(self)
         return res
 
+class GetEnumLabelError(Exception):
+    pass
+
+class GetEnumLabelNotFoundError(Exception):
+    pass
+
+def get_enum_label(oid, value):
+    status_code, label = client_intf.get_enum_label(oid, value)
+    if status_code == 0:
+        return label
+    elif status_code == 2:
+        message = "Error reading OID '" + oid + "'.  snmp_errno: " + label
+        raise GetEnumLabelError(message)
+    elif status_code == 3:
+        message = "OID does not contain an enum: '" + oid + "'"
+        raise GetEnumLabelError(message)
+    elif status_code == -1:
+        message = "No label found for value '" + str(value) + "' at OID '" + oid + "'"
+        raise GetEnumLabelNotFoundError(message)
+
 import netsnmp
         
 def snmpget(*args, **kargs):

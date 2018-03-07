@@ -2585,6 +2585,47 @@ netsnmp_set(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+netsnmp_get_enum_label(PyObject *self, PyObject *args) {
+    __libraries_init("python");
+    char * oid_name;
+    int enum_value;
+    oid parsed_oid[MAX_OID_LEN];
+    size_t name_length = MAX_OID_LEN;
+    PyObject* result_tuple = PyTuple_New(2);
+    PyTuple_SetItem(result_tuple, 0, PyInt_FromLong(-1L));
+    PyTuple_SetItem(result_tuple, 1, Py_None);
+
+    if (!PyArg_ParseTuple(args, "si", &oid_name, &enum_value)) {
+		return NULL;
+		//PyTuple_SetItem(result_tuple, 0, PyInt_FromLong(1L));
+		//return result_tuple;
+	}
+
+    if (!read_objid(oid_name, parsed_oid, &name_length)) {
+        PyTuple_SetItem(result_tuple, 1, PyInt_FromLong(2L));
+        PyTuple_SetItem(result_tuple, 1, PyInt_FromLong(snmp_errno));
+        return result_tuple;
+    }
+
+    struct tree    *tp;
+    tp = get_tree(parsed_oid, name_length, get_tree_head());
+    if (!tp->enums) {
+        PyTuple_SetItem(result_tuple, 0, PyInt_FromLong(3L));
+        return result_tuple;
+    }
+    struct enum_list *ep = tp->enums;
+    while (ep) {
+        if(ep->value == enum_value) {
+            PyTuple_SetItem(result_tuple, 0, PyInt_FromLong(0L));
+            PyTuple_SetItem(result_tuple, 1, PyString_FromString(ep->label));
+            return result_tuple;
+        }
+        ep = ep->next;
+    }
+    return result_tuple;
+}
+
 static PyMethodDef ClientMethods[] = {
   {"session",  netsnmp_create_session, METH_VARARGS,
    "create a netsnmp session."},
@@ -2604,6 +2645,8 @@ static PyMethodDef ClientMethods[] = {
    "perform an SNMP SET operation."},
   {"walk",  netsnmp_walk, METH_VARARGS,
    "perform an SNMP WALK operation."},
+  {"get_enum_label",  netsnmp_get_enum_label, METH_VARARGS,
+   "Translate an oid and enum val into an enum label"},
   {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -2612,8 +2655,3 @@ initclient_intf(void)
 {
     (void) Py_InitModule("client_intf", ClientMethods);
 }
-
-
-
-
-
